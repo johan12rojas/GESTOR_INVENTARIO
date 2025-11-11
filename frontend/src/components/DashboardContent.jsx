@@ -10,7 +10,9 @@ import UsersRolesView from './UsersRolesView';
 import SettingsView from './SettingsView';
 import api from '../services/api';
 
-const DashboardContent = ({ activeMenu }) => {
+const DashboardContent = ({ activeMenu, allowedMenus = [] }) => {
+  const hasAccess = allowedMenus.length === 0 || allowedMenus.includes(activeMenu);
+
   const [homeState, setHomeState] = useState({
     loading: false,
     error: '',
@@ -36,7 +38,7 @@ const DashboardContent = ({ activeMenu }) => {
   );
 
   useEffect(() => {
-    if (activeMenu !== 'inicio') {
+    if (!hasAccess || activeMenu !== 'inicio') {
       return;
     }
 
@@ -224,7 +226,7 @@ const DashboardContent = ({ activeMenu }) => {
     return () => {
       cancelled = true;
     };
-  }, [activeMenu]);
+  }, [activeMenu, hasAccess]);
 
   const renderHome = () => (
     <div className="dashboard-content">
@@ -500,6 +502,17 @@ const DashboardContent = ({ activeMenu }) => {
         );
     }
   };
+
+  if (!hasAccess) {
+    return (
+      <div className="dashboard-content">
+        <div className="content-header">
+          <h1>Acceso restringido</h1>
+          <p>No tienes permisos para visualizar esta sección.</p>
+        </div>
+      </div>
+    );
+  }
 
   return renderContent();
 };

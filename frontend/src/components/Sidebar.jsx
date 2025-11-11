@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import './Dashboard.css';
 
-const Sidebar = ({ activeMenu, setActiveMenu }) => {
+const Sidebar = ({ activeMenu, setActiveMenu, allowedMenus = [] }) => {
   const navigate = useNavigate();
   const [alertsBadge, setAlertsBadge] = useState(0);
 
@@ -147,6 +147,10 @@ const Sidebar = ({ activeMenu, setActiveMenu }) => {
     }
   ];
 
+  const filteredMenuItems = allowedMenus.length > 0
+    ? menuItems.filter((item) => allowedMenus.includes(item.id))
+    : menuItems;
+
   const handleMenuClick = (menuId) => {
     setActiveMenu(menuId);
   };
@@ -154,7 +158,7 @@ const Sidebar = ({ activeMenu, setActiveMenu }) => {
   return (
     <aside className="sidebar">
       <div className="sidebar-menu">
-        {menuItems.map((item) => (
+        {filteredMenuItems.map((item) => (
           <div
             key={item.id}
             className={`menu-item ${activeMenu === item.id ? 'active' : ''}`}
@@ -167,6 +171,11 @@ const Sidebar = ({ activeMenu, setActiveMenu }) => {
             )}
           </div>
         ))}
+        {filteredMenuItems.length === 0 && (
+          <div className="menu-item disabled">
+            <span className="menu-label">Sin accesos disponibles</span>
+          </div>
+        )}
       </div>
     </aside>
   );
