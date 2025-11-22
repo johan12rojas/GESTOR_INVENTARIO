@@ -70,7 +70,7 @@ const AlertsView = () => {
       const additionalAlerts = (productsResponse?.data?.products || [])
         .filter((product) => product.activo && product.estado === 'low')
         .filter((product) => !existingProductIds.has(product.id))
-        .filter(() => priorityFilter !== 'high')
+        .filter(() => priorityFilter === 'all')
         .map((product) => {
           const severity =
             product.stock <= Math.max(product.stock_minimo / 2, 1) ? 'high' : 'medium';
@@ -117,6 +117,12 @@ const AlertsView = () => {
   }, [fetchAlerts]);
 
   const handleMarkAsRead = async (id) => {
+    // Don't try to mark virtual alerts as read (they don't exist in DB)
+    if (String(id).startsWith('product-')) {
+      showMessage('info', 'Esta es una alerta virtual. Actualiza el stock del producto para resolverla.');
+      return;
+    }
+    
     try {
       await api.markAlertAsRead(id);
       showMessage('success', 'Alerta marcada como leída');
@@ -127,6 +133,12 @@ const AlertsView = () => {
   };
 
   const handleDelete = async (id) => {
+    // Don't try to delete virtual alerts (they don't exist in DB)
+    if (String(id).startsWith('product-')) {
+      showMessage('info', 'Esta es una alerta virtual. Actualiza el stock del producto para resolverla.');
+      return;
+    }
+    
     const confirmed = window.confirm('¿Eliminar esta alerta?');
     if (!confirmed) return;
     try {

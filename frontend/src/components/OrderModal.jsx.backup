@@ -6,15 +6,6 @@ const baseItem = {
   cantidad: 1,
 };
 
-const generateOrderNumber = () => {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-  return `PO-${year}${month}${day}-${random}`;
-};
-
 const OrderModal = ({
   open,
   loading,
@@ -40,7 +31,7 @@ const OrderModal = ({
   useEffect(() => {
     if (open) {
       setForm({
-        numero_pedido: generateOrderNumber(),
+        numero_pedido: '',
         proveedor_id: '',
         estado: 'pendiente',
         fecha_entrega_estimada: '',
@@ -81,10 +72,6 @@ const OrderModal = ({
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: undefined }));
     }
-  };
-
-  const handleGenerateOrderNumber = () => {
-    setForm((prev) => ({ ...prev, numero_pedido: generateOrderNumber() }));
   };
 
   const handleItemChange = (index, field, value) => {
@@ -175,26 +162,14 @@ const OrderModal = ({
           <div className="modal-grid">
             <div className="modal-field">
               <label htmlFor="numero_pedido">Número de pedido *</label>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <input
-                  id="numero_pedido"
-                  name="numero_pedido"
-                  type="text"
-                  value={form.numero_pedido}
-                  onChange={handleFieldChange}
-                  placeholder="PO-2025-001"
-                  style={{ flex: 1 }}
-                />
-                <button
-                  type="button"
-                  onClick={handleGenerateOrderNumber}
-                  className="modal-add"
-                  style={{ padding: '0 12px', fontSize: '18px' }}
-                  title="Generar nuevo número"
-                >
-                  ↻
-                </button>
-              </div>
+              <input
+                id="numero_pedido"
+                name="numero_pedido"
+                type="text"
+                value={form.numero_pedido}
+                onChange={handleFieldChange}
+                placeholder="PO-2025-001"
+              />
               {errors.numero_pedido && <span className="modal-error">{errors.numero_pedido}</span>}
             </div>
 

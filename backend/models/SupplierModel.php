@@ -15,34 +15,34 @@ class SupplierModel {
 
     public function getSuppliers(array $filters = []) {
         $query = "SELECT
-                    id,
-                    nombre,
-                    contacto,
-                    email,
-                    telefono,
-                    direccion,
-                    productos_suministrados,
-                    total_pedidos,
-                    activo
-                  FROM proveedores
+                    p.id,
+                    p.nombre,
+                    p.contacto,
+                    p.email,
+                    p.telefono,
+                    p.direccion,
+                    (SELECT COUNT(*) FROM productos prod WHERE prod.proveedor_id = p.id AND prod.activo = 1) as productos_suministrados,
+                    (SELECT COUNT(*) FROM pedidos ped WHERE ped.proveedor_id = p.id) as total_pedidos,
+                    p.activo
+                  FROM proveedores p
                   WHERE 1 = 1";
 
         $params = [];
 
         if (!empty($filters['search'])) {
-            $query .= " AND (nombre LIKE :search OR contacto LIKE :search OR email LIKE :search)";
+            $query .= " AND (p.nombre LIKE :search OR p.contacto LIKE :search OR p.email LIKE :search)";
             $params[':search'] = '%' . $filters['search'] . '%';
         }
 
         if (!empty($filters['status'])) {
             if ($filters['status'] === 'active') {
-                $query .= " AND activo = 1";
+                $query .= " AND p.activo = 1";
             } elseif ($filters['status'] === 'inactive') {
-                $query .= " AND activo = 0";
+                $query .= " AND p.activo = 0";
             }
         }
 
-        $query .= " ORDER BY nombre ASC";
+        $query .= " ORDER BY p.nombre ASC";
 
         $stmt = $this->conn->prepare($query);
         foreach ($params as $key => $value) {
@@ -66,12 +66,28 @@ class SupplierModel {
     }
 
     public function getSummary() {
+        // Calculate summary using the same dynamic logic to ensure consistency
         $query = "SELECT
                     COUNT(*) AS total_proveedores,
-                    COALESCE(SUM(productos_suministrados), 0) AS productos_totales,
-                    COALESCE(SUM(total_pedidos), 0) AS pedidos_totales
+                    (SELECT COUNT(*) FROM productos WHERE activo = 1 AND proveedor_id IS NOT NULL) AS productos_totales,
+                    (SELECT COUNT(*) FROM pedidos WHERE proveedor_id IS NOT NULL) AS pedidos_totales
                   FROM proveedores";
-        $stmt = $this->conn->prepare($query);
+        
+        // Note: The above query for totals is slightly simplified. 
+        // A more accurate way for totals specifically related to *suppliers* (if we only want to count products/orders linked to existing suppliers)
+        // would be summing the subqueries, but for general dashboard stats, counting the tables directly is usually what's expected 
+        // and more performant. However, to match the 'Suppliers View' context, let's stick to the table counts 
+        // but ensure we are counting what the user expects.
+        
+        // Actually, let's use a simpler approach for the summary that matches the grid data:
+        $stmt = $this->conn->prepare("
+            SELECT 
+                COUNT(*) as total_proveedores,
+                (SELECT COUNT(*) FROM productos WHERE proveedor_id IS NOT NULL AND activo = 1) as productos_totales,
+                (SELECT COUNT(*) FROM pedidos WHERE proveedor_id IS NOT NULL) as pedidos_totales
+            FROM proveedores
+        ");
+        
         $stmt->execute();
         $row = $stmt->fetch();
 

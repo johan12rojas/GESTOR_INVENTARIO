@@ -22,6 +22,12 @@
   color: #a92231;
 }
 
+.alerts-toast.info {
+  background: #e3f2fd;
+  border: 1px solid rgba(33, 150, 243, 0.38);
+  color: #1565c0;
+}
+
 .alerts-header {
   display: flex;
   justify-content: space-between;

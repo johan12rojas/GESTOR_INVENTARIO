@@ -75,7 +75,8 @@ class OrderModel {
 
         if (!empty($filters['endDate'])) {
             $query .= " AND o.fecha_creacion <= :endDate";
-            $params[':endDate'] = $filters['endDate'];
+            // Asegurar que incluya todo el día final
+            $params[':endDate'] = $filters['endDate'] . ' 23:59:59';
         }
 
         $query .= " GROUP BY
@@ -267,15 +268,96 @@ class OrderModel {
     }
 
     public function updateStatus(int $orderId, string $status) {
-        $stmt = $this->conn->prepare("
-            UPDATE pedidos
-            SET estado = :estado,
-                fecha_actualizacion = NOW()
-            WHERE id = :id
-        ");
-        $stmt->bindValue(':estado', $status);
-        $stmt->bindValue(':id', $orderId, PDO::PARAM_INT);
-        return $stmt->execute();
+        try {
+            $this->conn->beginTransaction();
+
+            // Obtener información actual del pedido
+            $stmt = $this->conn->prepare("SELECT numero_pedido, estado, creado_por FROM pedidos WHERE id = :id");
+            $stmt->execute([':id' => $orderId]);
+            $order = $stmt->fetch();
+
+            if (!$order) {
+                throw new Exception("Pedido no encontrado");
+            }
+
+            $oldStatus = $order['estado'];
+
+            // Actualizar estado
+            $stmt = $this->conn->prepare("
+                UPDATE pedidos
+                SET estado = :estado,
+                    fecha_actualizacion = NOW()
+                WHERE id = :id
+            ");
+            $stmt->bindValue(':estado', $status);
+            $stmt->bindValue(':id', $orderId, PDO::PARAM_INT);
+            $stmt->execute();
+
+            // Lógica de movimiento de inventario
+            // Caso 1: Se marca como entregado (Entrada de stock)
+            if ($status === 'entregado' && $oldStatus !== 'entregado') {
+                $this->registerOrderStockMovement($orderId, $order, 'entry');
+            }
+            // Caso 2: Se desmarca como entregado (Salida de stock - reversión)
+            elseif ($status !== 'entregado' && $oldStatus === 'entregado') {
+                $this->registerOrderStockMovement($orderId, $order, 'exit');
+            }
+
+            $this->conn->commit();
+            return true;
+        } catch (Exception $e) {
+            $this->conn->rollBack();
+            throw $e;
+        }
+    }
+
+    private function registerOrderStockMovement(int $orderId, array $order, string $type) {
+        // Obtener productos del pedido
+        $stmt = $this->conn->prepare("SELECT producto_id, cantidad FROM pedido_productos WHERE pedido_id = :id");
+        $stmt->execute([':id' => $orderId]);
+        $items = $stmt->fetchAll();
+
+        foreach ($items as $item) {
+            $productId = (int) $item['producto_id'];
+            $cantidad = (int) $item['cantidad'];
+
+            // Actualizar stock en tabla productos
+            if ($type === 'entry') {
+                $updateStock = $this->conn->prepare("UPDATE productos SET stock = stock + :qty WHERE id = :id");
+            } else {
+                // Verificar stock suficiente antes de restar (opcional, pero recomendable)
+                // En este caso asumimos que si se revierte una entrega, se debe restar sí o sí,
+                // aunque quede negativo, para mantener la consistencia contable.
+                $updateStock = $this->conn->prepare("UPDATE productos SET stock = stock - :qty WHERE id = :id");
+            }
+            
+            $updateStock->execute([':qty' => $cantidad, ':id' => $productId]);
+
+            // Registrar movimiento en historial
+            $referencia = "Pedido " . $order['numero_pedido'];
+            $notas = ($type === 'entry') 
+                ? "Entrada automática por recepción de pedido" 
+                : "Corrección automática por cambio de estado de pedido (Reversión)";
+
+            $insertMovement = $this->conn->prepare("
+                INSERT INTO movimientos (tipo, producto_id, cantidad, responsable_id, referencia, notas, fecha_movimiento)
+                VALUES (:tipo, :pid, :qty, :uid, :ref, :notes, NOW())
+            ");
+            
+            $insertMovement->bindValue(':tipo', $type);
+            $insertMovement->bindValue(':pid', $productId, PDO::PARAM_INT);
+            $insertMovement->bindValue(':qty', $cantidad, PDO::PARAM_INT);
+            
+            if ($order['creado_por']) {
+                $insertMovement->bindValue(':uid', $order['creado_por'], PDO::PARAM_INT);
+            } else {
+                $insertMovement->bindValue(':uid', null, PDO::PARAM_NULL);
+            }
+            
+            $insertMovement->bindValue(':ref', $referencia);
+            $insertMovement->bindValue(':notes', $notas);
+            $insertMovement->execute();
+        }
     }
 
     public function delete(int $orderId) {

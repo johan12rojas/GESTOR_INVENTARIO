@@ -4,7 +4,7 @@ RewriteBase /GESTOR_INVENTARIO/backend/api/
 # Habilitar CORS para desarrollo
 <IfModule mod_headers.c>
     Header set Access-Control-Allow-Origin "http://localhost:3000"
-    Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+    Header set Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
     Header set Access-Control-Allow-Headers "Content-Type, Authorization"
     Header set Access-Control-Allow-Credentials "true"
 </IfModule>
@@ -13,5 +13,3 @@ RewriteBase /GESTOR_INVENTARIO/backend/api/
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^(.*)$ index.php?path=$1 [QSA,L]
-
-

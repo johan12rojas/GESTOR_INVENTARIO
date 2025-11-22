@@ -58,7 +58,7 @@ class MovementModel {
 
         if (!empty($filters['endDate'])) {
             $query .= " AND m.fecha_movimiento <= :endDate";
-            $params[':endDate'] = $filters['endDate'];
+            $params[':endDate'] = $filters['endDate'] . ' 23:59:59';
         }
 
         $query .= " ORDER BY m.fecha_movimiento DESC";

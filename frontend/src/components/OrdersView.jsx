@@ -124,9 +124,41 @@ const OrdersView = () => {
     }
   };
 
+  const handleStatusChange = async (orderId, newStatus) => {
+    try {
+      await api.updateOrderStatus(orderId, newStatus);
+      showAlert('success', 'Estado actualizado correctamente');
+      fetchOrders();
+    } catch (error) {
+      showAlert('error', error?.message || 'No se pudo actualizar el estado');
+    }
+  };
+
   const renderStatusBadge = (estado) => {
     const info = statusLabels[estado] || { label: estado, color: 'default' };
     return <span className={`order-status ${info.color}`}>{info.label}</span>;
+  };
+
+  const getDeliveryStatus = (deliveryDate, orderStatus) => {
+    if (!deliveryDate || orderStatus === 'entregado' || orderStatus === 'cancelado') {
+      return null;
+    }
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const delivery = new Date(deliveryDate);
+    delivery.setHours(0, 0, 0, 0);
+    
+    const diffDays = Math.ceil((delivery - today) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) {
+      return { type: 'overdue', label: `Retrasado ${Math.abs(diffDays)} día(s)`, class: 'overdue' };
+    } else if (diffDays === 0) {
+      return { type: 'today', label: 'Entrega hoy', class: 'today' };
+    } else if (diffDays <= 3) {
+      return { type: 'soon', label: `${diffDays} día(s) restantes`, class: 'soon' };
+    }
+    return { type: 'ontime', label: `${diffDays} días restantes`, class: 'ontime' };
   };
 
   return (
@@ -206,7 +238,18 @@ const OrdersView = () => {
               <div className="order-card-main">
                 <div className="order-card-title">
                   <h2>Pedido #{order.numero_pedido.replace(/\D/g, '') || order.numero_pedido}</h2>
-                  {renderStatusBadge(order.estado)}
+                  <select 
+                    value={order.estado} 
+                    onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                    className={`order-status-select status-${statusLabels[order.estado]?.color || 'default'}`}
+                  >
+                    <option value="pendiente">Creado</option>
+                    <option value="confirmado">Confirmado</option>
+                    <option value="enviado">Enviado</option>
+                    <option value="en_transito">En tránsito</option>
+                    <option value="entregado">Entregado</option>
+                    <option value="cancelado">Cancelado</option>
+                  </select>
                 </div>
                 <p className="order-card-subtitle">
                   Proveedor: {order.proveedor?.nombre || 'Sin proveedor'}
@@ -251,6 +294,11 @@ const OrdersView = () => {
                       />
                     </svg>
                     Entrega: {order.fecha_entrega_estimada || 'Sin definir'}
+                    {getDeliveryStatus(order.fecha_entrega_estimada, order.estado) && (
+                      <span className={`delivery-status ${getDeliveryStatus(order.fecha_entrega_estimada, order.estado).class}`}>
+                        {getDeliveryStatus(order.fecha_entrega_estimada, order.estado).label}
+                      </span>
+                    )}
                   </span>
                   <span>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none">

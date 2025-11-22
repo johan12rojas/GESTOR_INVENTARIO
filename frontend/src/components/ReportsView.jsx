@@ -184,20 +184,30 @@ const ReportsView = () => {
             `Producto ${key}`,
           entradas: 0,
           salidas: 0,
+          revenue: 0,
         });
       }
       const item = map.get(key);
       const cantidad = Number(movement.cantidad) || 0;
+      const precio = Number(movement.producto_precio) || 0;
+      
       if (movement.tipo === 'entry') {
         item.entradas += cantidad;
       } else if (movement.tipo === 'exit') {
         item.salidas += cantidad;
+        item.revenue += cantidad * precio;
       }
     });
-    const list = Array.from(map.values()).map((item) => ({
-      ...item,
-      rotacion: item.salidas,
-    }));
+    
+    // Convert to array and filter out items with no activity to keep the list clean
+    const list = Array.from(map.values())
+      .filter(item => item.salidas > 0 || item.entradas > 0)
+      .map((item) => ({
+        ...item,
+        rotacion: item.salidas, // "Rotación" here interpreted as Sales Volume
+      }));
+      
+    // Sort by Sales Volume (Exits) descending
     return list.sort((a, b) => b.rotacion - a.rotacion);
   }, [filteredMovements, productMap]);
 
@@ -209,41 +219,56 @@ const ReportsView = () => {
 
   const costSummary = useMemo(() => {
     const map = new Map();
+    const isDaily = period === 'week' || period === 'month';
     
+    const getKeyAndLabel = (dateStr) => {
+      const date = new Date(dateStr);
+      if (isDaily) {
+        const key = date.toISOString().split('T')[0];
+        const label = date.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+        return { key, label };
+      } else {
+        const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        const label = date.toLocaleDateString('es-ES', { month: 'short', year: 'numeric' });
+        return { key, label };
+      }
+    };
+
     // Process Sales (from Exit Movements)
     filteredMovements.forEach((movement) => {
       if (movement.tipo !== 'exit') return;
-      const date = movement.fecha_movimiento ? new Date(movement.fecha_movimiento) : null;
-      if (!date) return;
-      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      if (!movement.fecha_movimiento) return;
+      
+      const { key, label } = getKeyAndLabel(movement.fecha_movimiento);
       
       if (!map.has(key)) {
         map.set(key, {
-          label: date.toLocaleDateString('es-ES', { month: 'short', year: 'numeric' }),
+          label,
           ventas: 0,
           compras: 0,
           margen: 0,
+          sortKey: key // Helper for sorting
         });
       }
       const entry = map.get(key);
       const totalVenta = (Number(movement.cantidad) || 0) * (Number(movement.producto_precio) || 0);
       entry.ventas += totalVenta;
-      // Estimating margin as 30% of sales for simplicity if cost is not tracked per movement
       entry.margen += totalVenta * 0.30; 
     });
 
     // Process Purchases (from Orders)
     filteredOrders.forEach((order) => {
-      const date = order.fecha_creacion ? new Date(order.fecha_creacion) : null;
-      if (!date) return;
-      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      if (!order.fecha_creacion) return;
+      
+      const { key, label } = getKeyAndLabel(order.fecha_creacion);
       
       if (!map.has(key)) {
         map.set(key, {
-          label: date.toLocaleDateString('es-ES', { month: 'short', year: 'numeric' }),
+          label,
           ventas: 0,
           compras: 0,
           margen: 0,
+          sortKey: key
         });
       }
       const entry = map.get(key);
@@ -251,9 +276,9 @@ const ReportsView = () => {
     });
 
     const list = Array.from(map.values());
-    list.sort((a, b) => (a.label > b.label ? 1 : -1));
+    list.sort((a, b) => (a.sortKey > b.sortKey ? 1 : -1));
     return list;
-  }, [filteredMovements, filteredOrders]);
+  }, [filteredMovements, filteredOrders, period]);
 
   const grossMargin = useMemo(
     () => costSummary.reduce((acc, item) => acc + item.margen, 0),
@@ -917,10 +942,13 @@ const DonutChart = ({ data, valueKey, labelKey, colors, size = 200 }) => {
                 <p className="reports-empty">Sin pedidos en el período seleccionado.</p>
               ) : (
                 <DonutChart 
-                  data={supplierPerformance.slice(0, 5)} 
+                  data={supplierPerformance.slice(0, 10)} 
                   valueKey="pedidos" 
                   labelKey="proveedor"
-                  colors={['#239c56', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6']}
+                  colors={[
+                    '#239c56', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', 
+                    '#ec4899', '#14b8a6', '#6366f1', '#84cc16', '#f43f5e'
+                  ]}
                 />
               )}
             </div>

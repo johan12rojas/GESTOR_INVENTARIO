@@ -306,6 +306,92 @@
   color: #b91c1c;
 }
 
+.order-status-select {
+  border: 1px solid rgba(145, 158, 171, 0.24);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  background: white;
+  color: #212b36;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.order-status-select:hover {
+  border-color: #239C56;
+  box-shadow: 0 0 0 3px rgba(35, 156, 86, 0.1);
+}
+
+.order-status-select:focus {
+  border-color: #239C56;
+  box-shadow: 0 0 0 3px rgba(35, 156, 86, 0.15);
+}
+
+/* Colored status selects */
+.order-status-select.status-created {
+  background: rgba(75, 85, 99, 0.08);
+  border-color: rgba(75, 85, 99, 0.3);
+  color: #374151;
+}
+
+.order-status-select.status-confirmed {
+  background: rgba(59, 130, 246, 0.08);
+  border-color: rgba(59, 130, 246, 0.3);
+  color: #1e40af;
+}
+
+.order-status-select.status-shipped,
+.order-status-select.status-transit {
+  background: rgba(245, 158, 11, 0.08);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: #b45309;
+}
+
+.order-status-select.status-delivered {
+  background: rgba(34, 197, 94, 0.08);
+  border-color: rgba(34, 197, 94, 0.3);
+  color: #15803d;
+}
+
+.order-status-select.status-cancelled {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #b91c1c;
+}
+
+/* Delivery status indicators */
+.delivery-status {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.delivery-status.overdue {
+  background: rgba(239, 68, 68, 0.12);
+  color: #b91c1c;
+}
+
+.delivery-status.today {
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+}
+
+.delivery-status.soon {
+  background: rgba(59, 130, 246, 0.12);
+  color: #1e40af;
+}
+
+.delivery-status.ontime {
+  background: rgba(34, 197, 94, 0.12);
+  color: #15803d;
+}
+
 .orders-empty {
   background: white;
   border-radius: 16px;
